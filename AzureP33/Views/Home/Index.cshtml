@@ -1,0 +1,60 @@
+﻿@model AzureP33.Models.Home.HomeIndexViewModel
+
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Хмарні технології і використання Microsoft Azure під час розробки додатків</h1>
+</div>
+
+<h2 class="display-5">
+    Перекладач
+</h2>
+
+<form method="get" class="d-flex">
+    <div class="flex-grow-1"></div>
+    <div class="flex-grow-1">
+        <label for="source-textarea" class="form-label">Text will be translate here..</label>
+
+        <select class="form-select" aria-label="Original language" name="lang-from">
+            <option selected>Ukrainian</option>
+            <option value="1">English</option>
+            <option value="2">German</option>
+            <option value="3">Italian</option>
+        </select>
+
+        <div class="mb-3">
+            <textarea name="original-text" class="form-control" id="source-textarea" rows="3">@Model.FormModel?.OriginalText</textarea>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                @Model.ErrorMessage
+            </div>
+        }
+    </div>
+    <span class="flex-grow-0 m-3 mt-5">
+        <button class="btn btn-outline-danger" type="button">
+            <i class="bi bi-arrow-left-right"></i>
+        </button>
+        <br />
+        <button class="btn btn-outline-success mt-2" type="submit" name="action-button" value="translate">
+            <i class="bi bi-translate"></i>
+        </button>
+    </span>
+    <div class="flex-grow-1">
+        <label for="translation-textarea" class="form-label">Result translate</label>
+        <select class="form-select" aria-label="Language translate" name="lang-to">
+            <option selected>English</option>
+            <option value="1">Ukrainian</option>
+            <option value="2">German</option>
+            <option value="3">Italian</option>
+        </select>
+        <div class="mb-3">
+            <textarea disable readonly class="form-control" id="translation-textarea" rows="3">Example translate</textarea>
+        </div>
+    </div>
+    <div class="flex-grow-1"></div>
+</form>
