@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AzureP33.Models.ORM;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AzureP33.Models.Home
 {
@@ -15,5 +16,7 @@ namespace AzureP33.Models.Home
 
         [FromQuery(Name = "action-button")]
         public String? Action { get; set; } = null!;
+
+        public LangData? Lang { get; set; }
     }
 }

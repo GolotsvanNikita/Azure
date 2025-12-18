@@ -1,4 +1,6 @@
-﻿namespace AzureP33.Models.Home
+﻿using AzureP33.Models.ORM;
+
+namespace AzureP33.Models.Home
 {
     public class HomeIndexViewModel
     {
@@ -8,9 +10,10 @@
 
         public String? ErrorMessage { get; set; }
 
-        //public static implicit operator HomeIndexViewModel?(HomeIndexFormModel? v)
-        //{
-        //    throw new NotImplementedException();
-        //}
+        public LanguagesResponse LanguagesResponse { get; set; } = null!;
+
+        public LangData? Lang { get; set; }
+        public HomeIndexFormModel? Form { get; set; }
+
     }
 }

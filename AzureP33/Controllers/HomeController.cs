@@ -1,7 +1,9 @@
 ﻿using AzureP33.Models;
 using AzureP33.Models.Home;
+using AzureP33.Models.ORM;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace AzureP33.Controllers
 {
@@ -14,12 +16,23 @@ namespace AzureP33.Controllers
             _logger = logger;
         }
 
-        public IActionResult Index(HomeIndexFormModel? formModel)
+        public async Task<IActionResult> IndexAsync(HomeIndexFormModel? formModel)
         {
+            using HttpClient client = new();
+            var response = JsonSerializer.Deserialize<LanguagesResponse>
+            (
+                await client.GetStringAsync
+                (
+                    @"https://api.translator.azure.cn/languages?api-version=3.0"
+                )
+            ) ?? throw new Exception("Error in resp");
+
             HomeIndexViewModel viewModel = new()
             {
                 PageTitle = "Translation",
                 FormModel = formModel?.Action == null ? null : formModel,
+                LanguagesResponse = response,
+                Lang = formModel.Lang
             };
 
             if (formModel?.Action != null) 
@@ -35,6 +48,8 @@ namespace AzureP33.Controllers
                     /////
                 }
             }
+
+
 
             return View(viewModel);
         }
