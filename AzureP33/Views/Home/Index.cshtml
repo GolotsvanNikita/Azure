@@ -18,25 +18,21 @@
         <label for="source-textarea" class="form-label">Text will be translate here..</label>
 
         <select class="form-select" aria-label="Original language" name="lang-from">
-            @foreach (var item in Model.LanguagesResponse.Transltations)
-            {
-                if (item.Value.Name != item.Value.NativeName)
-                {
-                    <option value="@item.Key">@item.Value.Name (@item.Value.NativeName)</option>
-                }
-                else
-                {
-                    <option value="@item.Key">@item.Value.Name</option>
-                }
+            @{
+                string currentLang = !string.IsNullOrEmpty(Model.FormModel?.LangForm) 
+                                     ? Model.FormModel.LangForm 
+                                     : "uk"; 
             }
 
-            @if (!string.IsNullOrEmpty(Model.FormModel?.ToString()))
+            @foreach (var item in Model.LanguagesResponse.Transltations)
             {
-                <option value="@Model.Lang?.Direction" selected>@Model.Lang?.Name (@Model.Lang?.NativeName)</option>
-            }
-            else
-            {
-                <option value="1" selected>Ukrainian</option>
+                var isSelected = (item.Key == currentLang) ? "selected" : "";
+
+                var displayName = item.Value.Name != item.Value.NativeName
+                    ? $"{item.Value.Name} ({item.Value.NativeName})"
+                    : item.Value.Name;
+
+                <option value="@item.Key" isSelected>@displayName</option>
             }
         </select>
 
@@ -82,3 +78,5 @@
     </div>
     <div class="flex-grow-1"></div>
 </form>
+
+<h2 class="display-6">Placement password information in projects what publishing.</h2>

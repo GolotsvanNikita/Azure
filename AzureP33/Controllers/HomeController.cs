@@ -30,10 +30,18 @@ namespace AzureP33.Controllers
             HomeIndexViewModel viewModel = new()
             {
                 PageTitle = "Translation",
-                FormModel = formModel?.Action == null ? null : formModel,
-                LanguagesResponse = response,
-                Lang = formModel.Lang
+                FormModel = formModel,
+                LanguagesResponse = response
             };
+
+
+            if (formModel != null && !string.IsNullOrEmpty(formModel.LangForm))
+            {
+                if (response.Transltations.TryGetValue(formModel.LangForm, out var selectedLang))
+                {
+                    viewModel.Lang = selectedLang;
+                }
+            }
 
             if (formModel?.Action != null) 
             {
