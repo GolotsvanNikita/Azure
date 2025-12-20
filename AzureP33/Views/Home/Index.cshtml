@@ -18,21 +18,17 @@
         <label for="source-textarea" class="form-label">Text will be translate here..</label>
 
         <select class="form-select" aria-label="Original language" name="lang-from">
-            @{
-                string currentLang = !string.IsNullOrEmpty(Model.FormModel?.LangForm) 
-                                     ? Model.FormModel.LangForm 
-                                     : "uk"; 
-            }
-
             @foreach (var item in Model.LanguagesResponse.Transltations)
             {
-                var isSelected = (item.Key == currentLang) ? "selected" : "";
+                bool isSelected = item.Key == Model.FormModel!.LangFrom;
 
-                var displayName = item.Value.Name != item.Value.NativeName
-                    ? $"{item.Value.Name} ({item.Value.NativeName})"
-                    : item.Value.Name;
+                string displayName = item.Value.Name;
+                if (item.Value.Name != item.Value.NativeName)
+                {
+                    displayName += $" ({item.Value.NativeName})";
+                }
 
-                <option value="@item.Key" isSelected>@displayName</option>
+                <!option value="@item.Key" @(isSelected ? "selected" : "")>@displayName</!option>
             }
         </select>
 
@@ -58,22 +54,22 @@
     </span>
     <div class="flex-grow-1">
         <label for="translation-textarea" class="form-label">Result translate</label>
-        <select class="form-select" aria-label="Language translate" name="lang-to">
+        <select class="form-select" aria-label="Original language" name="lang-to">
             @foreach (var item in Model.LanguagesResponse.Transltations)
             {
+                bool isSelected = item.Key == Model.FormModel!.LangTo;
 
+                string displayName = item.Value.Name;
                 if (item.Value.Name != item.Value.NativeName)
                 {
-                    <option value="@item.Key">@item.Value.Name (@item.Value.NativeName)</option>
+                    displayName += $" ({item.Value.NativeName})";
                 }
-                else
-                {
-                    <option value="@item.Key">@item.Value.Name</option>
-                }
+
+                <!option value="@item.Key" @(isSelected ? "selected" : "")>@displayName</!option>
             }
         </select>
         <div class="mb-3">
-            <textarea disable readonly class="form-control" id="translation-textarea" rows="3">Example translate</textarea>
+            <textarea disable readonly class="form-control" id="translation-textarea" rows="3">@ViewData["result"]</textarea>
         </div>
     </div>
     <div class="flex-grow-1"></div>

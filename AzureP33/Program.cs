@@ -1,6 +1,16 @@
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+try
+{
+    builder.Configuration.AddJsonFile("azuresettings.json");
+}
+catch 
+{
+    Console.WriteLine("Not Found file(s): azuresettings.json\nAre you read README?");
+    return;
+}
+
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();

@@ -1,8 +1,10 @@
 ﻿using AzureP33.Models;
 using AzureP33.Models.Home;
 using AzureP33.Models.ORM;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 
 namespace AzureP33.Controllers
@@ -10,10 +12,12 @@ namespace AzureP33.Controllers
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
+        private readonly IConfiguration _configuration;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(ILogger<HomeController> logger, IConfiguration configuration)
         {
             _logger = logger;
+            _configuration = configuration;
         }
 
         public async Task<IActionResult> IndexAsync(HomeIndexFormModel? formModel)
@@ -27,6 +31,18 @@ namespace AzureP33.Controllers
                 )
             ) ?? throw new Exception("Error in resp");
 
+            string defaultLang = "uk";
+
+            if (formModel == null)
+            {
+                formModel = new HomeIndexFormModel();
+            }
+
+            if (string.IsNullOrEmpty(formModel.LangFrom))
+            {
+                formModel.LangFrom = defaultLang;
+            }
+
             HomeIndexViewModel viewModel = new()
             {
                 PageTitle = "Translation",
@@ -34,13 +50,9 @@ namespace AzureP33.Controllers
                 LanguagesResponse = response
             };
 
-
-            if (formModel != null && !string.IsNullOrEmpty(formModel.LangForm))
+            if (response.Transltations.TryGetValue(formModel.LangFrom, out var selectedLangData))
             {
-                if (response.Transltations.TryGetValue(formModel.LangForm, out var selectedLang))
-                {
-                    viewModel.Lang = selectedLang;
-                }
+                viewModel.Lang = selectedLangData;
             }
 
             if (formModel?.Action != null) 
@@ -51,12 +63,67 @@ namespace AzureP33.Controllers
                 {
                     viewModel.ErrorMessage = "Please enter any text to translate";
                 }
-                else 
-                {
-                    /////
-                }
             }
 
+            if (formModel?.Action == "translate")
+            {
+                var sec = _configuration.GetSection("Azure").GetSection("Translator");
+
+                if (sec == null)
+                {
+                    throw new Exception("Configuration error");
+                }
+
+                string key = sec.GetValue<string>("Key");
+                string endpoint = sec.GetValue<string>("Endpoint");
+                string location = sec.GetValue<string>("Location");
+                string translatorPath = sec.GetValue<string>("TranslatorPath");
+                string apiVersion = sec.GetValue<string>("ApiVersion");
+
+                if (string.IsNullOrWhiteSpace(formModel.OriginalText))
+                {
+                    viewModel.ErrorMessage = "Text cannot be empty";
+                }
+                else
+                {
+                    string route = $"{translatorPath}?api-version={apiVersion}&from={formModel.LangFrom}&to={formModel.LangTo}";
+
+                    object[] body = new object[] { new { Text = formModel.OriginalText } };
+                    var requestBody = JsonSerializer.Serialize(body);
+
+                    using (var client2 = new HttpClient())
+                    using (var request = new HttpRequestMessage())
+                    {
+                        request.Method = HttpMethod.Post;
+                        request.RequestUri = new Uri(endpoint + route);
+                        request.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+                        request.Headers.Add("Ocp-Apim-Subscription-Key", key);
+                        request.Headers.Add("Ocp-Apim-Subscription-Region", location);
+
+                        HttpResponseMessage translationResponse = await client2.SendAsync(request).ConfigureAwait(false);
+
+                        string jsonResult = await translationResponse.Content.ReadAsStringAsync();
+
+                        try
+                        {
+                            using (JsonDocument doc = JsonDocument.Parse(jsonResult))
+                            {
+
+                                string translatedText = doc.RootElement[0]
+                                                        .GetProperty("translations")[0]
+                                                        .GetProperty("text")
+                                                        .GetString();
+
+                                ViewData["result"] = translatedText;
+                            }
+                        }
+                        catch
+                        {
+                            ViewData["result"] = jsonResult;
+                        }
+                    }
+                }
+            }
 
 
             return View(viewModel);

@@ -6,7 +6,7 @@ namespace AzureP33.Models.Home
     public class HomeIndexFormModel
     {
         [FromQuery(Name = "lang-from")]
-        public String LangForm { get; set; } = null!;
+        public String LangFrom { get; set; } = null!;
 
         [FromQuery(Name = "lang-to")]
         public String LangTo { get; set; } = null!;
