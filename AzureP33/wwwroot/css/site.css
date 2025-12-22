@@ -1,26 +1,47 @@
-html {
-  font-size: 14px;
-  background-color: dimgray;
-  color: white;
+body
+{
+    background-color: #121212;
+    color: #e0e0e0;
 }
 
-@media (min-width: 768px) {
-    html {
-        font-size: 16px;
+h1, h2, h3, h4, h5, h6
+{
+    color: #ffffff;
+}
+
+.form-control, .form-select
+{
+    background-color: #2d2d2d;
+    border: 1px solid #444;
+    color: #fff;
+}
+
+    .form-control:focus, .form-select:focus
+    {
+        background-color: #333;
+        color: #fff;
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     }
+
+    .form-control:disabled, .form-control[readonly]
+    {
+        background-color: #1e1e1e;
+        color: #aaa;
+        border-color: #333;
+    }
+
+.border-bottom
+{
+    border-bottom: 1px solid #333 !important;
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+a
+{
+    color: #6ea8fe;
 }
 
-html {
-  position: relative;
-  min-height: 100%;
-}
-
-body {
-    margin-bottom: 60px;
-    background-color: dimgray;
-    color: white;
+.footer
+{
+    color: #aaa;
 }
