@@ -7,3 +7,7 @@
 
 ## All data
 <img width="2503" height="597" alt="image" src="https://github.com/user-attachments/assets/f2ee9881-a08d-4bf9-b006-5e5fc9e1e572" />
+
+# Task 2
+<img width="2504" height="1400" alt="image" src="https://github.com/user-attachments/assets/f901c938-2692-4e5a-a92c-fd5bc4d1dc81" />
+<img width="2504" height="1398" alt="image" src="https://github.com/user-attachments/assets/e26e108a-b57c-4b0d-8547-8844eb417ce7" />
