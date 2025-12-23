@@ -11,6 +11,8 @@ namespace AzureP33.Models.Home
         public String? ErrorMessage { get; set; }
 
         public LanguagesResponse LanguagesResponse { get; set; } = null!;
+        public TranslatorErrorResponse? ErrorResponse { get; set; }
+        public List<TranslatorResponseItem> Items { get; set; }
 
         public LangData? Lang { get; set; }
         public HomeIndexFormModel? Form { get; set; }

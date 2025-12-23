@@ -3,6 +3,7 @@ using AzureP33.Models.Home;
 using AzureP33.Models.ORM;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -65,7 +66,7 @@ namespace AzureP33.Controllers
                 }
             }
 
-            if (formModel?.Action == "translate")
+            if (formModel?.Action == "translate")   
             {
                 var sec = _configuration.GetSection("Azure").GetSection("Translator");
 
@@ -119,10 +120,21 @@ namespace AzureP33.Controllers
                         }
                         catch
                         {
+                            viewModel.ErrorResponse = JsonSerializer.Deserialize<TranslatorErrorResponse>(jsonResult);
                             ViewData["result"] = jsonResult;
                         }
                     }
                 }
+            }
+
+            if (formModel?.Action == "replace") 
+            {
+                var fromL = formModel.LangFrom;
+                var temp = formModel.LangFrom;
+
+                fromL = formModel.LangTo;
+                formModel.LangTo = temp;
+                
             }
 
 
