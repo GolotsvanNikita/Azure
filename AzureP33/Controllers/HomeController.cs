@@ -81,9 +81,9 @@ namespace AzureP33.Controllers
                 string translatorPath = sec.GetValue<string>("TranslatorPath");
                 string apiVersion = sec.GetValue<string>("ApiVersion");
 
-                if (string.IsNullOrWhiteSpace(formModel.OriginalText))
+                if (string.IsNullOrWhiteSpace(formModel.OriginalText) || formModel.OriginalText.Trim().Length < 2)
                 {
-                    viewModel.ErrorMessage = "Text cannot be empty";
+                    viewModel.ErrorMessage = "Text must be at least 2 characters long.";
                 }
                 else
                 {
