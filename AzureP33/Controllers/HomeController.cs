@@ -24,12 +24,8 @@ namespace AzureP33.Controllers
         public async Task<IActionResult> IndexAsync(HomeIndexFormModel? formModel)
         {
             using HttpClient client = new();
-            var response = JsonSerializer.Deserialize<LanguagesResponse>
-            (
-                await client.GetStringAsync
-                (
-                    @"https://api.translator.azure.cn/languages?api-version=3.0"
-                )
+            var response = JsonSerializer.Deserialize<LanguagesResponse>(
+                await client.GetStringAsync(@"https://api.translator.azure.cn/languages?api-version=3.0")
             ) ?? throw new Exception("Error in resp");
 
             string defaultLang = "uk";
@@ -44,6 +40,23 @@ namespace AzureP33.Controllers
                 formModel.LangFrom = defaultLang;
             }
 
+            if (formModel.Action == "replace")
+            {
+                var temp = formModel.LangFrom;
+                formModel.LangFrom = formModel.LangTo;
+                formModel.LangTo = temp;
+
+                if (!string.IsNullOrEmpty(formModel.TranslatedText))
+                {
+                    formModel.OriginalText = formModel.TranslatedText;
+
+                    formModel.TranslatedText = null;
+                    ViewData["result"] = "";
+
+                    formModel.Action = "translate";
+                }
+            }
+
             HomeIndexViewModel viewModel = new()
             {
                 PageTitle = "Translation",
@@ -56,24 +69,21 @@ namespace AzureP33.Controllers
                 viewModel.Lang = selectedLangData;
             }
 
-            if (formModel?.Action != null) 
+            if (formModel?.Action != null)
             {
                 viewModel.FormModel = formModel;
 
-                if (string.IsNullOrWhiteSpace(formModel.OriginalText))
+                if (string.IsNullOrWhiteSpace(formModel.OriginalText) && formModel.Action == "translate")
                 {
                     viewModel.ErrorMessage = "Please enter any text to translate";
                 }
             }
 
-            if (formModel?.Action == "translate")   
+            if (formModel?.Action == "translate")
             {
                 var sec = _configuration.GetSection("Azure").GetSection("Translator");
 
-                if (sec == null)
-                {
-                    throw new Exception("Configuration error");
-                }
+                if (sec == null) throw new Exception("Configuration error");
 
                 string key = sec.GetValue<string>("Key");
                 string endpoint = sec.GetValue<string>("Endpoint");
@@ -81,14 +91,9 @@ namespace AzureP33.Controllers
                 string translatorPath = sec.GetValue<string>("TranslatorPath");
                 string apiVersion = sec.GetValue<string>("ApiVersion");
 
-                if (string.IsNullOrWhiteSpace(formModel.OriginalText) || formModel.OriginalText.Trim().Length < 2)
-                {
-                    viewModel.ErrorMessage = "Text must be at least 2 characters long.";
-                }
-                else
+                if (!string.IsNullOrWhiteSpace(formModel.OriginalText) && formModel.OriginalText.Trim().Length >= 2)
                 {
                     string route = $"{translatorPath}?api-version={apiVersion}&from={formModel.LangFrom}&to={formModel.LangTo}";
-
                     object[] body = new object[] { new { Text = formModel.OriginalText } };
                     var requestBody = JsonSerializer.Serialize(body);
 
@@ -102,14 +107,12 @@ namespace AzureP33.Controllers
                         request.Headers.Add("Ocp-Apim-Subscription-Region", location);
 
                         HttpResponseMessage translationResponse = await client2.SendAsync(request).ConfigureAwait(false);
-
                         string jsonResult = await translationResponse.Content.ReadAsStringAsync();
 
                         try
                         {
                             using (JsonDocument doc = JsonDocument.Parse(jsonResult))
                             {
-
                                 string translatedText = doc.RootElement[0]
                                                         .GetProperty("translations")[0]
                                                         .GetProperty("text")
@@ -125,18 +128,11 @@ namespace AzureP33.Controllers
                         }
                     }
                 }
+                else if (string.IsNullOrWhiteSpace(viewModel.ErrorMessage))
+                {
+                    viewModel.ErrorMessage = "Text must be at least 2 characters long.";
+                }
             }
-
-            if (formModel?.Action == "replace") 
-            {
-                var fromL = formModel.LangFrom;
-                var temp = formModel.LangFrom;
-
-                fromL = formModel.LangTo;
-                formModel.LangTo = temp;
-                
-            }
-
 
             return View(viewModel);
         }

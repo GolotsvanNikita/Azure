@@ -44,7 +44,7 @@
         }
     </div>
     <span class="flex-grow-0 m-3 mt-5">
-        <button class="btn btn-outline-danger" type="button" name="action-button" value="replace">
+        <button class="btn btn-outline-danger" type="submit" name="action-button" value="replace">
             <i class="bi bi-arrow-left-right"></i>
         </button>
         <br />
@@ -69,7 +69,7 @@
             }
         </select>
         <div class="mb-3">
-            <textarea disable readonly class="form-control" id="translation-textarea" rows="3">@ViewData["result"]</textarea>
+            <textarea readonly name="translated-text" class="form-control" id="translation-textarea" rows="3">@ViewData["result"]</textarea>
         </div>
     </div>
     <div class="flex-grow-1"></div>

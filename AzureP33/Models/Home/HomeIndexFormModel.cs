@@ -14,6 +14,9 @@ namespace AzureP33.Models.Home
         [FromQuery(Name = "original-text")]
         public String OriginalText { get; set; } = null!;
 
+        [FromQuery(Name = "translated-text")]
+        public String? TranslatedText { get; set; }
+
         [FromQuery(Name = "action-button")]
         public String? Action { get; set; } = null!;
 
