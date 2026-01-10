@@ -81,52 +81,22 @@ namespace AzureP33.Controllers
 
             if (formModel?.Action == "translate")
             {
-                var sec = _configuration.GetSection("Azure").GetSection("Translator");
-
-                if (sec == null) throw new Exception("Configuration error");
-
-                string key = sec.GetValue<string>("Key");
-                string endpoint = sec.GetValue<string>("Endpoint");
-                string location = sec.GetValue<string>("Location");
-                string translatorPath = sec.GetValue<string>("TranslatorPath");
-                string apiVersion = sec.GetValue<string>("ApiVersion");
-
                 if (!string.IsNullOrWhiteSpace(formModel.OriginalText) && formModel.OriginalText.Trim().Length >= 2)
                 {
-                    string route = $"{translatorPath}?api-version={apiVersion}&from={formModel.LangFrom}&to={formModel.LangTo}";
+                    string query = $"from={formModel.LangFrom}&to={formModel.LangTo}";
                     object[] body = new object[] { new { Text = formModel.OriginalText } };
                     var requestBody = JsonSerializer.Serialize(body);
 
-                    using (var client2 = new HttpClient())
-                    using (var request = new HttpRequestMessage())
+                    string result = await RequestApi(query, requestBody, ApiMode.Transliterate);
+                    if (result[0] == '[')
                     {
-                        request.Method = HttpMethod.Post;
-                        request.RequestUri = new Uri(endpoint + route);
-                        request.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
-                        request.Headers.Add("Ocp-Apim-Subscription-Key", key);
-                        request.Headers.Add("Ocp-Apim-Subscription-Region", location);
-
-                        HttpResponseMessage translationResponse = await client2.SendAsync(request).ConfigureAwait(false);
-                        string jsonResult = await translationResponse.Content.ReadAsStringAsync();
-
-                        try
-                        {
-                            using (JsonDocument doc = JsonDocument.Parse(jsonResult))
-                            {
-                                string translatedText = doc.RootElement[0]
-                                                        .GetProperty("translations")[0]
-                                                        .GetProperty("text")
-                                                        .GetString();
-
-                                ViewData["result"] = translatedText;
-                            }
-                        }
-                        catch
-                        {
-                            viewModel.ErrorResponse = JsonSerializer.Deserialize<TranslatorErrorResponse>(jsonResult);
-                            ViewData["result"] = jsonResult;
-                        }
+                        viewModel.Items = JsonSerializer.Deserialize<List<TranslatorResponseItem>>(result);
                     }
+                    else 
+                    {
+                        viewModel.ErrorResponse = JsonSerializer.Deserialize<TranslatorErrorResponse>(result);
+                    }
+
                 }
                 else if (string.IsNullOrWhiteSpace(viewModel.ErrorMessage))
                 {
@@ -134,7 +104,69 @@ namespace AzureP33.Controllers
                 }
             }
 
+            if (formModel?.Action == "transliterate")
+            {
+                LangData langData;
+
+                try
+                {
+
+                    if (!string.IsNullOrWhiteSpace(formModel.OriginalText) && formModel.OriginalText.Trim().Length >= 2)
+                    {
+
+                        langData = response.Translatirations[formModel.LangFrom];
+                        string fromScript = langData.Scripts![0].Code!;
+                        string toScript = langData.Scripts![0].ToScripts![0].Code!;
+
+                        string query = $"language={formModel.LangFrom}&fromScript={fromScript}&toScript={toScript}";
+                        var requestBody = JsonSerializer.Serialize(new object[]
+                        {
+                            new { Text = formModel.OriginalText } 
+                        });
+                        ViewData["result"] = await RequestApi(query, requestBody, ApiMode.Transliterate);  
+                    }
+                    else if (string.IsNullOrWhiteSpace(viewModel.ErrorMessage))
+                    {
+                        viewModel.ErrorMessage = "Text must be at least 2 characters long.";
+                    }
+                }
+                catch {}
+            }
+
             return View(viewModel);
+        }
+
+        private async Task<String> RequestApi(String query, String body, ApiMode apiMode) 
+        {
+            var sec = _configuration.GetSection("Azure").GetSection("Translator") ?? throw new Exception("Configuration error: Azure.Translator is null");
+
+            if (sec == null) throw new Exception("Configuration error");
+
+            string key = sec.GetValue<string>("Key") ?? throw new Exception("Configuration error: 'Key' is null");
+            string endpoint = sec.GetValue<string>("Endpoint") ?? throw new Exception("Configuration error: 'Endpoint' is null");
+            string location = sec.GetValue<string>("Location") ?? throw new Exception("Configuration error: 'Location' is null");
+            string apiVersion = sec.GetValue<string>("ApiVersion") ?? throw new Exception("Configuration error: 'ApiVersion' is null");
+
+            string apiPath = apiMode switch
+            {
+                ApiMode.Translate => sec.GetValue<string>("TranslatorPath"),
+                ApiMode.Transliterate => sec.GetValue<string>("TransliteratorPath"),
+                _ => null
+            } ?? throw new Exception("Configuration error: 'apiPath' is null");
+
+            using (var client2 = new HttpClient())
+            using (var request = new HttpRequestMessage()) 
+            {
+                request.Method = HttpMethod.Post;
+                request.RequestUri = new Uri($"{endpoint}{apiPath}?api-version={apiVersion}&{query}");
+                request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+                request.Headers.Add("Ocp-Apim-Subscription-Key", key);
+                request.Headers.Add("Ocp-Apim-Subscription-Region", location);
+
+                HttpResponseMessage translationResponse = await client2.SendAsync(request).ConfigureAwait(false);
+                string jsonResult = await translationResponse.Content.ReadAsStringAsync();
+                return jsonResult;
+            }
         }
 
         public IActionResult Privacy()
@@ -147,5 +179,11 @@ namespace AzureP33.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
+    }
+
+    enum ApiMode 
+    {
+        Translate,
+        Transliterate,
     }
 }
