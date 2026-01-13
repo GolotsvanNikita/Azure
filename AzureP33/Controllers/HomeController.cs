@@ -14,6 +14,7 @@ namespace AzureP33.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly IConfiguration _configuration;
+        private LanguagesResponse? languagesResponse;
 
         public HomeController(ILogger<HomeController> logger, IConfiguration configuration)
         {
@@ -21,19 +22,31 @@ namespace AzureP33.Controllers
             _configuration = configuration;
         }
 
+        private async Task<LanguagesResponse> GetLanguagesAsync() 
+        {
+            if (languagesResponse == null) 
+            {
+                using HttpClient client = new();
+
+                languagesResponse = JsonSerializer.Deserialize<LanguagesResponse>(
+                    await client.GetStringAsync(@"https://api.translator.azure.cn/languages?api-version=3.0")
+                );
+
+
+                if (languagesResponse == null)
+                {
+                    throw new Exception("LanguagesResponse got NULL result");
+                }
+            }
+            return languagesResponse;
+        }
+
         public async Task<IActionResult> IndexAsync(HomeIndexFormModel? formModel)
         {
-            using HttpClient client = new();
-            var response = JsonSerializer.Deserialize<LanguagesResponse>(
-                await client.GetStringAsync(@"https://api.translator.azure.cn/languages?api-version=3.0")
-            ) ?? throw new Exception("Error in resp");
+            Task<LanguagesResponse> responseTask = GetLanguagesAsync();
 
             string defaultLang = "uk";
 
-            if (formModel == null)
-            {
-                formModel = new HomeIndexFormModel();
-            }
 
             if (string.IsNullOrEmpty(formModel.LangFrom))
             {
@@ -61,13 +74,8 @@ namespace AzureP33.Controllers
             {
                 PageTitle = "Translation",
                 FormModel = formModel,
-                LanguagesResponse = response
+                //LanguagesResponse = response
             };
-
-            if (response.Transltations.TryGetValue(formModel.LangFrom, out var selectedLangData))
-            {
-                viewModel.Lang = selectedLangData;
-            }
 
             if (formModel?.Action != null)
             {
@@ -87,7 +95,7 @@ namespace AzureP33.Controllers
                     object[] body = new object[] { new { Text = formModel.OriginalText } };
                     var requestBody = JsonSerializer.Serialize(body);
 
-                    string result = await RequestApi(query, requestBody, ApiMode.Transliterate);
+                    string result = await RequestApi(query, requestBody, ApiMode.Translate);
                     if (result[0] == '[')
                     {
                         viewModel.Items = JsonSerializer.Deserialize<List<TranslatorResponseItem>>(result);
@@ -104,7 +112,14 @@ namespace AzureP33.Controllers
                 }
             }
 
-            if (formModel?.Action == "transliterate")
+            var response = await responseTask;
+
+            if (response.Transltations.TryGetValue(formModel.LangFrom, out var selectedLangData))
+            {
+                viewModel.Lang = selectedLangData;
+            }
+
+            if (viewModel.Items != null) 
             {
                 LangData langData;
 
@@ -142,6 +157,45 @@ namespace AzureP33.Controllers
                 }
             }
 
+            //if (formModel?.Action == "transliterate")
+            //{
+            //    LangData langData;
+
+            //    try
+            //    {
+            //        if (!string.IsNullOrWhiteSpace(formModel.OriginalText) && formModel.OriginalText.Trim().Length >= 2)
+            //        {
+            //            langData = response.Translatirations[formModel.LangFrom];
+            //            string fromScript = langData.Scripts![0].Code!;
+            //            string toScript = langData.Scripts![0].ToScripts![0].Code!;
+
+            //            string query = $"language={formModel.LangFrom}&fromScript={fromScript}&toScript={toScript}";
+            //            var requestBody = JsonSerializer.Serialize(new object[]
+            //            {
+            //                new { Text = formModel.OriginalText }
+            //            });
+
+            //            string jsonResult = await RequestApi(query, requestBody, ApiMode.Transliterate);
+
+            //            var resultItems = JsonSerializer.Deserialize<List<TransliterationResponseItem>>(jsonResult);
+
+            //            if (resultItems != null && resultItems.Count > 0)
+            //            {
+            //                ViewData["result"] = resultItems[0].Text;
+            //            }
+            //        }
+            //        else if (string.IsNullOrWhiteSpace(viewModel.ErrorMessage))
+            //        {
+            //            viewModel.ErrorMessage = "Text must be at least 2 characters long.";
+            //        }
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        viewModel.ErrorMessage = "Transliteration failed.";
+            //    }
+            //}
+
+            viewModel.LanguagesResponse = await responseTask;
             return View(viewModel);
         }
 

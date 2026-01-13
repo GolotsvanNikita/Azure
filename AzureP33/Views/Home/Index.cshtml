@@ -35,6 +35,7 @@
         <div class="mb-3">
             <textarea name="original-text" class="form-control" id="source-textarea" rows="3">@Model.FormModel?.OriginalText</textarea>
         </div>
+        @Model.FromTransliteration?.Text
 
         @if (!string.IsNullOrEmpty(Model.ErrorMessage))
         {
@@ -49,10 +50,6 @@
         </button>
         <br />
         <button class="btn btn-outline-success mt-2" type="submit" name="action-button" value="translate">
-            <i class="bi bi-translate"></i>
-        </button>
-        <br />
-        <button class="btn btn-outline-warning mt-2" type="submit" name="action-button" value="transliterate">
             <i class="bi bi-translate"></i>
         </button>
     </span>
@@ -73,7 +70,7 @@
             }
         </select>
         <div class="mb-3">
-            <textarea readonly name="translated-text" class="form-control" id="translation-textarea" rows="3">@ViewData["result"]</textarea>
+            <textarea readonly name="translated-text" class="form-control" id="translation-textarea" rows="3">@Model.Items?[0].Translations[0].Text</textarea>
         </div>
     </div>
     <div class="flex-grow-1"></div>
