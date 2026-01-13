@@ -110,10 +110,8 @@ namespace AzureP33.Controllers
 
                 try
                 {
-
                     if (!string.IsNullOrWhiteSpace(formModel.OriginalText) && formModel.OriginalText.Trim().Length >= 2)
                     {
-
                         langData = response.Translatirations[formModel.LangFrom];
                         string fromScript = langData.Scripts![0].Code!;
                         string toScript = langData.Scripts![0].ToScripts![0].Code!;
@@ -121,16 +119,27 @@ namespace AzureP33.Controllers
                         string query = $"language={formModel.LangFrom}&fromScript={fromScript}&toScript={toScript}";
                         var requestBody = JsonSerializer.Serialize(new object[]
                         {
-                            new { Text = formModel.OriginalText } 
+                            new { Text = formModel.OriginalText }
                         });
-                        ViewData["result"] = await RequestApi(query, requestBody, ApiMode.Transliterate);  
+
+                        string jsonResult = await RequestApi(query, requestBody, ApiMode.Transliterate);
+
+                        var resultItems = JsonSerializer.Deserialize<List<TransliterationResponseItem>>(jsonResult);
+
+                        if (resultItems != null && resultItems.Count > 0)
+                        {
+                            ViewData["result"] = resultItems[0].Text;
+                        }
                     }
                     else if (string.IsNullOrWhiteSpace(viewModel.ErrorMessage))
                     {
                         viewModel.ErrorMessage = "Text must be at least 2 characters long.";
                     }
                 }
-                catch {}
+                catch (Exception ex)
+                {
+                    viewModel.ErrorMessage = "Transliteration failed.";
+                }
             }
 
             return View(viewModel);
