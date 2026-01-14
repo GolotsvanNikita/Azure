@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using System.Diagnostics;
+using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 
@@ -143,7 +144,7 @@ namespace AzureP33.Controllers
 
                         if (resultItems != null && resultItems.Count > 0)
                         {
-                            ViewData["result"] = resultItems[0].Text;
+                            viewModel.FromTransliteration = resultItems[0];
                         }
                     }
                     else if (string.IsNullOrWhiteSpace(viewModel.ErrorMessage))
@@ -155,45 +156,41 @@ namespace AzureP33.Controllers
                 {
                     viewModel.ErrorMessage = "Transliteration failed.";
                 }
+
+                try
+                {
+                    if (viewModel.Items?.Count > 0 && viewModel.Items[0].Translations?.Count > 0)
+                    {
+                        string translatedText = viewModel.Items[0].Translations[0].Text;
+
+                        if (response.Translatirations.TryGetValue(formModel.LangTo, out var targetLangData))
+                        {
+                            string fromScript = targetLangData.Scripts![0].Code!;
+                            string toScript = targetLangData.Scripts![0].ToScripts![0].Code!;
+
+                            string query = $"language={formModel.LangTo}&fromScript={fromScript}&toScript={toScript}";
+
+                            var requestBody = JsonSerializer.Serialize(new object[]
+                            {
+                                new { Text = translatedText }
+                            });
+
+                            string jsonResult = await RequestApi(query, requestBody, ApiMode.Transliterate);
+
+                            var resultItems = JsonSerializer.Deserialize<List<TransliterationResponseItem>>(jsonResult);
+
+                            if (resultItems != null && resultItems.Count > 0)
+                            {
+                                viewModel.ToTransliteration = resultItems[0];
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    viewModel.ErrorMessage = "Target transliteration failed: " + ex.Message;
+                }
             }
-
-            //if (formModel?.Action == "transliterate")
-            //{
-            //    LangData langData;
-
-            //    try
-            //    {
-            //        if (!string.IsNullOrWhiteSpace(formModel.OriginalText) && formModel.OriginalText.Trim().Length >= 2)
-            //        {
-            //            langData = response.Translatirations[formModel.LangFrom];
-            //            string fromScript = langData.Scripts![0].Code!;
-            //            string toScript = langData.Scripts![0].ToScripts![0].Code!;
-
-            //            string query = $"language={formModel.LangFrom}&fromScript={fromScript}&toScript={toScript}";
-            //            var requestBody = JsonSerializer.Serialize(new object[]
-            //            {
-            //                new { Text = formModel.OriginalText }
-            //            });
-
-            //            string jsonResult = await RequestApi(query, requestBody, ApiMode.Transliterate);
-
-            //            var resultItems = JsonSerializer.Deserialize<List<TransliterationResponseItem>>(jsonResult);
-
-            //            if (resultItems != null && resultItems.Count > 0)
-            //            {
-            //                ViewData["result"] = resultItems[0].Text;
-            //            }
-            //        }
-            //        else if (string.IsNullOrWhiteSpace(viewModel.ErrorMessage))
-            //        {
-            //            viewModel.ErrorMessage = "Text must be at least 2 characters long.";
-            //        }
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        viewModel.ErrorMessage = "Transliteration failed.";
-            //    }
-            //}
 
             viewModel.LanguagesResponse = await responseTask;
             return View(viewModel);

@@ -33,9 +33,22 @@
         </select>
 
         <div class="mb-3">
-            <textarea name="original-text" class="form-control" id="source-textarea" rows="3">@Model.FormModel?.OriginalText</textarea>
+            <div class="form-control p-0 d-flex flex-column" style="min-height: 100px; height: auto;">
+
+                <textarea name="original-text"
+                          class="form-control borderless-textarea flex-grow-1"
+                          id="source-textarea"
+                          rows="3"
+                          style="min-height: 60px;">@Model.FormModel?.OriginalText</textarea>
+
+                @if (Model.FromTransliteration != null)
+                {
+                    <div class="px-3 pb-2 text-muted fst-italic border-top border-secondary pt-1" style="font-size: 0.9em;">
+                        @Model.FromTransliteration.Text
+                    </div>
+                }
+            </div>
         </div>
-        @Model.FromTransliteration?.Text
 
         @if (!string.IsNullOrEmpty(Model.ErrorMessage))
         {
@@ -70,7 +83,22 @@
             }
         </select>
         <div class="mb-3">
-            <textarea readonly name="translated-text" class="form-control" id="translation-textarea" rows="3">@Model.Items?[0].Translations[0].Text</textarea>
+            <div class="form-control p-0 d-flex flex-column" style="min-height: 100px; height: auto;">
+
+                <textarea readonly
+                          name="translated-text"
+                          class="form-control borderless-textarea flex-grow-1"
+                          id="translation-textarea"
+                          rows="3"
+                          style="min-height: 60px;">@Model.Items?[0].Translations[0].Text</textarea>
+
+                @if (Model.ToTransliteration != null)
+                {
+                    <div class="px-3 pb-2 text-primary fst-italic border-top border-secondary pt-1" style="font-size: 0.9em;">
+                        @Model.ToTransliteration.Text
+                    </div>
+                }
+            </div>
         </div>
     </div>
     <div class="flex-grow-1"></div>
