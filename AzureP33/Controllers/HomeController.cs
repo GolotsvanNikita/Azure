@@ -229,6 +229,11 @@ namespace AzureP33.Controllers
             }
         }
 
+        public async Task<JsonResult> FetchTranslationAsync(HomeIndexFormModel formModel)
+        {
+            return Json(formModel);
+        }
+
         public IActionResult Privacy()
         {
             return View();
