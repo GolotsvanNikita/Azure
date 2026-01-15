@@ -24,8 +24,11 @@ function translate(target)
     target = target.trim();
     if (target != "")
     {
+        const langFrom = document.querySelector('select[name="lang-from"]').value;
+        const langTo = document.querySelector('select[name="lang-to"]').value;
+
         console.log('Translated: ', target);
-        fetch(`/Home/FetchTranslation?lang-from=en&lang-to=uk&original-text=${target}&action-button=fetch`)
+        fetch(`/Home/FetchTranslation?lang-from=${langFrom}&lang-to=${langTo}&original-text=${target}&action-button=fetch`)
             .then(r => r.json())
             .then(res => {
                 console.log(res);

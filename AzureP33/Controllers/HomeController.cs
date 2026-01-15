@@ -4,10 +4,12 @@ using AzureP33.Models.ORM;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using System;
 using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace AzureP33.Controllers
 {
@@ -46,7 +48,7 @@ namespace AzureP33.Controllers
         {
             Task<LanguagesResponse> responseTask = GetLanguagesAsync();
 
-            string defaultLang = "uk";
+            string defaultLang = "en";
 
 
             if (string.IsNullOrEmpty(formModel.LangFrom))
@@ -196,6 +198,23 @@ namespace AzureP33.Controllers
             return View(viewModel);
         }
 
+        private async Task<String> RequestTranslationAsync(HomeIndexFormModel formModel) 
+        {
+            string query = $"from={formModel.LangFrom}&to={formModel.LangTo}";
+            object[] body = new object[] { new { Text = formModel.OriginalText } };
+            var requestBody = JsonSerializer.Serialize(body);
+
+            string result = await RequestApi(query, requestBody, ApiMode.Translate);
+            if (result[0] == '[')
+            {
+                return JsonSerializer.Deserialize<List<TranslatorResponseItem>>(result)![0].Translations[0].Text;
+            }
+            else
+            {
+                throw new Exception(JsonSerializer.Deserialize<TranslatorErrorResponse>(result)!.Error.Message);
+            }
+        }
+
         private async Task<String> RequestApi(String query, String body, ApiMode apiMode) 
         {
             var sec = _configuration.GetSection("Azure").GetSection("Translator") ?? throw new Exception("Configuration error: Azure.Translator is null");
@@ -229,9 +248,35 @@ namespace AzureP33.Controllers
             }
         }
 
+        [HttpGet]
         public async Task<JsonResult> FetchTranslationAsync(HomeIndexFormModel formModel)
         {
-            return Json(formModel);
+            var responseLang = await GetLanguagesAsync();
+
+            if (responseLang == null)
+            {
+                Response.StatusCode = StatusCodes.Status400BadRequest;
+                return Json($"Lang from '{formModel.LangFrom}' data unsupported");
+            }
+            else if (formModel.Action != "fetch") 
+            {
+                Response.StatusCode = StatusCodes.Status400BadRequest;
+                return Json($"Action '{formModel.Action}' is not fetch");
+            }
+            else if (formModel.OriginalText.Length <= 0)
+            {
+                Response.StatusCode = StatusCodes.Status400BadRequest;
+                return Json($"Text length '{formModel.LangFrom}' not upper than null");
+            }
+            try
+            {
+                return Json(await RequestTranslationAsync(formModel));
+            }
+            catch (Exception ex) 
+            {
+                Response.StatusCode = StatusCodes.Status500InternalServerError;
+                return Json(ex.Message);
+            }
         }
 
         public IActionResult Privacy()
