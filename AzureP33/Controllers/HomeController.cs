@@ -251,31 +251,31 @@ namespace AzureP33.Controllers
         [HttpGet]
         public async Task<JsonResult> FetchTranslationAsync(HomeIndexFormModel formModel)
         {
-            var responseLang = await GetLanguagesAsync();
+            string serviceUnavailableMessage = "Translate service is not working, try later.";
 
-            if (responseLang == null)
-            {
-                Response.StatusCode = StatusCodes.Status400BadRequest;
-                return Json($"Lang from '{formModel.LangFrom}' data unsupported");
-            }
-            else if (formModel.Action != "fetch") 
-            {
-                Response.StatusCode = StatusCodes.Status400BadRequest;
-                return Json($"Action '{formModel.Action}' is not fetch");
-            }
-            else if (formModel.OriginalText.Length <= 0)
-            {
-                Response.StatusCode = StatusCodes.Status400BadRequest;
-                return Json($"Text length '{formModel.LangFrom}' not upper than null");
-            }
             try
             {
-                return Json(await RequestTranslationAsync(formModel));
+                var responseLang = await GetLanguagesAsync();
+
+                if (responseLang == null || formModel.Action != "fetch" || string.IsNullOrEmpty(formModel.OriginalText))
+                {
+                    Response.StatusCode = StatusCodes.Status400BadRequest;
+                    return Json(serviceUnavailableMessage);
+                }
+
+                string translatedText = await RequestTranslationAsync(formModel);
+                string originalText = formModel.OriginalText.Trim();
+
+                string separator = originalText.Length > 300 ? "<br/>" : " - ";
+
+                string result = $"{originalText}{separator}{translatedText}";
+
+                return Json(result);
             }
-            catch (Exception ex) 
+            catch (Exception)
             {
                 Response.StatusCode = StatusCodes.Status500InternalServerError;
-                return Json(ex.Message);
+                return Json(serviceUnavailableMessage);
             }
         }
 
