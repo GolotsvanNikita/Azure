@@ -286,7 +286,7 @@ namespace AzureP33.Controllers
         public async Task<IActionResult> CosmosAsync()
         {
             CosmosClient client = new(
-                connectionString: "AccountEndpoint=https://azure-p33-db.documents.azure.com:443/;AccountKey=HLf20JTMrUKlTaZq5Vox1XPgZAhpRKAknA9tGnQnQx3iEp4JL3Y50ANauY0MzoDdNle2AGPuCmshACDbikHIIQ==;"
+                connectionString: ""
             );
 
             Database database = client.GetDatabase("cosmicworks");
