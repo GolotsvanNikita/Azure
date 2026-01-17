@@ -285,11 +285,8 @@ namespace AzureP33.Controllers
 
         public async Task<IActionResult> CosmosAsync()
         {
-/*            CosmosClient client = new(
-                connectionString: ""
-            );*/
 
-            Database database = client.GetDatabase("cosmicworks");
+            /*Database database = client.GetDatabase("cosmicworks");*/
             database = await database.ReadAsync();
 
             Container container = database.GetContainer("products");
