@@ -283,16 +283,16 @@ namespace AzureP33.Controllers
             }
         }
 
-        public async Task<IActionResult> CosmosAsync()
+/*        public async Task<IActionResult> CosmosAsync()
         {
 
-            /*Database database = client.GetDatabase("cosmicworks");*/
-            database = await database.ReadAsync();
+            *//*Database database = client.GetDatabase("cosmicworks");*/
+/*            database = await database.ReadAsync();
 
             Container container = database.GetContainer("products");
-            container = await container.ReadContainerAsync();
+            container = await container.ReadContainerAsync();*/
 
-            var query = new QueryDefinition(
+/*            var query = new QueryDefinition(
                 query: "SELECT * FROM c WHERE p.categoryId = @category"
             )
                 .WithParameter("@category", "26C74104-40BC-4541-8EF5-9892F7F03D72");
@@ -300,8 +300,8 @@ namespace AzureP33.Controllers
             using FeedIterator<Product> feed = container.GetItemQueryIterator<Product>(
                 queryDefinition: query
             );
-
-            List<Product> items = new();
+*/
+/*            List<Product> items = new();
             double requestCharge = 0d;
             while (feed.HasMoreResults)
             {
@@ -317,8 +317,8 @@ namespace AzureP33.Controllers
             {
                 Products = items,
                 RequestCharge = requestCharge
-            });
-        }
+            });*//*
+        }*/
 
         public IActionResult Privacy()
         {
