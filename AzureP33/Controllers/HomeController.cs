@@ -266,7 +266,7 @@ namespace AzureP33.Controllers
                 string translatedText = await RequestTranslationAsync(formModel);
                 string originalText = formModel.OriginalText.Trim();
 
-                string separator = originalText.Length > 300 ? "<br/>" : " - ";
+                string separator = originalText.Length > 300 ? "\n" : " - ";
 
                 string result = $"{originalText}{separator}{translatedText}";
 
