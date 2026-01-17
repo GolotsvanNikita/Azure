@@ -1,10 +1,14 @@
 ﻿using AzureP33.Models;
+using AzureP33.Models.Cosmos;
 using AzureP33.Models.Home;
 using AzureP33.Models.ORM;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Configuration;
 using System;
+using System.Configuration;
 using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
@@ -277,6 +281,46 @@ namespace AzureP33.Controllers
                 Response.StatusCode = StatusCodes.Status500InternalServerError;
                 return Json(serviceUnavailableMessage);
             }
+        }
+
+        public async Task<IActionResult> CosmosAsync()
+        {
+            CosmosClient client = new(
+                connectionString: "AccountEndpoint=https://azure-p33-db.documents.azure.com:443/;AccountKey=HLf20JTMrUKlTaZq5Vox1XPgZAhpRKAknA9tGnQnQx3iEp4JL3Y50ANauY0MzoDdNle2AGPuCmshACDbikHIIQ==;"
+            );
+
+            Database database = client.GetDatabase("cosmicworks");
+            database = await database.ReadAsync();
+
+            Container container = database.GetContainer("products");
+            container = await container.ReadContainerAsync();
+
+            var query = new QueryDefinition(
+                query: "SELECT * FROM c WHERE p.categoryId = @category"
+            )
+                .WithParameter("@category", "26C74104-40BC-4541-8EF5-9892F7F03D72");
+
+            using FeedIterator<Product> feed = container.GetItemQueryIterator<Product>(
+                queryDefinition: query
+            );
+
+            List<Product> items = new();
+            double requestCharge = 0d;
+            while (feed.HasMoreResults)
+            {
+                FeedResponse<Product> response = await feed.ReadNextAsync();
+                foreach (Product item in response)
+                {
+                    items.Add(item);
+                }
+                requestCharge += response.RequestCharge;
+            }
+
+            return View(new HomeCosmosViewModel
+            {
+                Products = items,
+                RequestCharge = requestCharge
+            });
         }
 
         public IActionResult Privacy()
