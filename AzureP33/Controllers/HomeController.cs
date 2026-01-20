@@ -2,6 +2,7 @@
 using AzureP33.Models.Cosmos;
 using AzureP33.Models.Home;
 using AzureP33.Models.ORM;
+using AzureP33.Services.CosmosDB;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -22,11 +23,13 @@ namespace AzureP33.Controllers
         private readonly ILogger<HomeController> _logger;
         private readonly IConfiguration _configuration;
         private LanguagesResponse? languagesResponse;
+        private readonly ICosmosDbService _cosmosDbService;
 
-        public HomeController(ILogger<HomeController> logger, IConfiguration configuration)
+        public HomeController(ILogger<HomeController> logger, IConfiguration configuration, ICosmosDbService cosmosDbService)
         {
             _logger = logger;
             _configuration = configuration;
+            _cosmosDbService = cosmosDbService;
         }
 
         private async Task<LanguagesResponse> GetLanguagesAsync() 
@@ -285,13 +288,7 @@ namespace AzureP33.Controllers
 
         public async Task<IActionResult> CosmosAsync()
         {
-            CosmosClient client = new("AccountEndpoint=https://azure-p33-db.documents.azure.com:443/;AccountKey=HLf20JTMrUKlTaZq5Vox1XPgZAhpRKAknA9tGnQnQx3iEp4JL3Y50ANauY0MzoDdNle2AGPuCmshACDbikHIIQ==;");
-
-            Database database = client.GetDatabase("cosmicworks");
-            database = await database.ReadAsync();
-
-            Container container = database.GetContainer("products");
-            container = await container.ReadContainerAsync();
+            Container container = await _cosmosDbService.GetContainerAsync();
 
             var query = new QueryDefinition(
                 query: "SELECT * FROM c WHERE c.categoryId = @category"
