@@ -12,7 +12,8 @@
     Перекладач
 </h2>
 
-<a asp-action="Cosmos">Cosmos</a>
+<a asp-action="Cosmos">Cosmos</a><br/>
+<a asp-action="CosmosAdd">Cosmos Add</a><br />
 
 <form method="get" class="d-flex">
     <div class="flex-grow-1"></div>
@@ -105,6 +106,8 @@
     </div>
     <div class="flex-grow-1"></div>
 </form>
+
+Switch selection translate <input type="checkbox" id="switchSelection"/>
 
 @if (Model.ErrorResponse != null)
 {

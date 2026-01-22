@@ -1,4 +1,5 @@
-﻿using AzureP33.Models.ORM;
+﻿using AzureP33.Models.Cosmos;
+using AzureP33.Models.ORM;
 
 namespace AzureP33.Models.Home
 {
@@ -16,6 +17,8 @@ namespace AzureP33.Models.Home
 
         public TransliterationResponseItem? FromTransliteration { get; set; }
         public TransliterationResponseItem? ToTransliteration { get; set; }
+
+        public List<TranslationHistory> History { get; set; } = new();
 
         public LangData? Lang { get; set; }
         public HomeIndexFormModel? Form { get; set; }

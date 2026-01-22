@@ -286,6 +286,42 @@ namespace AzureP33.Controllers
             }
         }
 
+        public async Task<IActionResult> CosmosAddAsync([FromForm] HomeCosmosAddFormModel? formModelCosmos, [FromForm] HomeIndexFormModel formModel) 
+        {
+            if (formModelCosmos?.Action == "Create") 
+            {
+                if (String.IsNullOrEmpty(formModelCosmos.Name) || String.IsNullOrEmpty(formModelCosmos.Email))
+                {
+                    ViewData["result"] = "Fill all inputs.";
+                }
+                else 
+                {
+                    Container container = await _cosmosDbService.GetContainerAsync();
+                    Models.Cosmos.TranslationHistory history = new()
+                    {
+                        Id = Guid.NewGuid(),
+                        userId = "Anonim",
+                        OriginalText = formModel.OriginalText,
+                        TranslatedText = formModel.TranslatedText,
+                        FromLang = formModel.LangFrom,
+                        ToLang = formModel.LangTo,
+                        CreatedAt = DateTime.Now,
+                        FromTransliteration = formModel.FromTransliteration,
+                        ToTransliteration = formModel.ToTransliteration,
+                        FromTranResult = formModel.FromTransliteration?.Text,
+                        ToTranResult = formModel.ToTransliteration?.Text
+                    };
+                    ItemResponse<Models.Cosmos.TranslationHistory> response = await container.UpsertItemAsync<Models.Cosmos.TranslationHistory>
+                    (
+                        item: history,
+                        partitionKey: new PartitionKey(Models.Cosmos.TranslationHistory.PartitionKey)
+                    );
+                    ViewData["result"] = $"History: {response.Resource}, Status code: {response.StatusCode}, Request charge: {response.RequestCharge:0.00}";
+                }
+            }
+            return View();
+        }
+
         public async Task<IActionResult> CosmosAsync(string? categoryId)
         {
             Container container = await _cosmosDbService.GetContainerAsync();
