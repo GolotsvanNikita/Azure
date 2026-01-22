@@ -6,5 +6,7 @@ namespace AzureP33.Models.Home
     {
         public List<Product> Products { get; set; } = new();
         public double RequestCharge { get; set; }
+        public List<Product> AvailableCategories { get; set; } = new();
+        public string? SelectedCategoryId { get; set; }
     }
 }

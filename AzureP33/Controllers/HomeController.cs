@@ -286,36 +286,52 @@ namespace AzureP33.Controllers
             }
         }
 
-        public async Task<IActionResult> CosmosAsync()
+        public async Task<IActionResult> CosmosAsync(string? categoryId)
         {
             Container container = await _cosmosDbService.GetContainerAsync();
 
-            var query = new QueryDefinition(
-                query: "SELECT * FROM c WHERE c.categoryId = @category"
-            )
-                .WithParameter("@category", "26C74104-40BC-4541-8EF5-9892F7F03D72");
-
-            using FeedIterator<Product> feed = container.GetItemQueryIterator<Product>(
-                queryDefinition: query
+            var categoriesQuery = new QueryDefinition(
+                "SELECT DISTINCT c.categoryId, c.categoryName FROM c"
             );
+
+            List<Product> categories = new();
+            using (FeedIterator<Product> catIterator = container.GetItemQueryIterator<Product>(categoriesQuery))
+            {
+                while (catIterator.HasMoreResults)
+                {
+                    FeedResponse<Product> response = await catIterator.ReadNextAsync();
+                    categories.AddRange(response);
+                }
+            }
 
             List<Product> items = new();
             double requestCharge = 0d;
-            while (feed.HasMoreResults)
+
+            if (!string.IsNullOrEmpty(categoryId))
             {
-                FeedResponse<Product> response = await feed.ReadNextAsync();
-                foreach (Product item in response)
+                var productQuery = new QueryDefinition("SELECT * FROM c WHERE c.categoryId = @category")
+                    .WithParameter("@category", categoryId.ToUpper());
+
+                using (FeedIterator<Product> feed = container.GetItemQueryIterator<Product>(productQuery))
                 {
-                    items.Add(item);
+                    while (feed.HasMoreResults)
+                    {
+                        FeedResponse<Product> response = await feed.ReadNextAsync();
+                        items.AddRange(response);
+                        requestCharge += response.RequestCharge;
+                    }
                 }
-                requestCharge += response.RequestCharge;
             }
 
-            return View(new HomeCosmosViewModel
+            var viewModel = new HomeCosmosViewModel
             {
                 Products = items,
-                RequestCharge = requestCharge
-            });
+                RequestCharge = requestCharge,
+                AvailableCategories = categories,
+                SelectedCategoryId = categoryId
+            };
+
+            return View(viewModel);
         }
 
         public IActionResult Privacy()

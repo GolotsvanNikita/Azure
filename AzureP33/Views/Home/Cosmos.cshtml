@@ -5,16 +5,64 @@
 }
 
 <div class="text-center">
-    <h1 class="display-4">Хмарні технології і використання Microsoft Azure під час розробки додатків</h1>
+    <h1 class="display-4">Хмарні технології і використання Microsoft Azure</h1>
 </div>
 
-<h2 class="display-5">
-    CosmosDB
-</h2>
+<h2 class="display-5 my-4">CosmosDB: Products</h2>
 
-@Model.RequestCharge
+<div class="card mb-4">
+    <div class="card-body">
+        <form asp-action="Cosmos" method="get" class="row g-3 align-items-center">
+            <div class="col-auto">
+                <label for="categorySelect" class="col-form-label fw-bold">Select product:</label>
+            </div>
+            <div class="col-auto">
+                <select name="categoryId" id="categorySelect" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Not selected --</option>
+                    @foreach (var cat in Model.AvailableCategories)
+                    {
+                        if (Model.SelectedCategoryId != null &&
+                        string.Equals(cat.categoryId.ToString(), Model.SelectedCategoryId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <!option value="@cat.categoryId" selected>@cat.categoryName</!option>
+                        }
+                        else
+                        {
+                            <!option value="@cat.categoryId">@cat.categoryName</!option>
+                        }
+                    }
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
 
-@foreach(var p in Model.Products)
+@if (Model.RequestCharge > 0)
 {
-    <p>@p.name : @p.description</p>    
+    <div class="alert alert-info py-2">
+        <small>Request Charge: <strong>@Model.RequestCharge RUs</strong></small>
+    </div>
+}
+
+@if (Model.Products.Count > 0)
+{
+    <div class="list-group">
+        @foreach (var p in Model.Products)
+        {
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">@p.name</h5>
+                    <small class="text-muted">@p.price.ToString("C")</small>
+                </div>
+                <p class="mb-1">@p.description</p>
+                <small class="text-muted">SKU: @p.sku</small>
+            </div>
+        }
+    </div>
+}
+else if (!string.IsNullOrEmpty(Model.SelectedCategoryId))
+{
+    <div class="alert alert-warning">
+        This category without product.
+    </div>
 }
