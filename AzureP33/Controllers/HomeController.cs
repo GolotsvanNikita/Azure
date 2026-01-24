@@ -54,46 +54,26 @@ namespace AzureP33.Controllers
         public async Task<IActionResult> IndexAsync(HomeIndexFormModel? formModel)
         {
             Task<LanguagesResponse> responseTask = GetLanguagesAsync();
-
-            string defaultLang = "en";
-
-
-            if (string.IsNullOrEmpty(formModel.LangFrom))
-            {
-                formModel.LangFrom = defaultLang;
-            }
-
-            if (formModel.Action == "replace")
-            {
-                var temp = formModel.LangFrom;
-                formModel.LangFrom = formModel.LangTo;
-                formModel.LangTo = temp;
-
-                if (!string.IsNullOrEmpty(formModel.TranslatedText))
-                {
-                    formModel.OriginalText = formModel.TranslatedText;
-
-                    formModel.TranslatedText = null;
-                    ViewData["result"] = "";
-
-                    formModel.Action = "translate";
-                }
-            }
+            var response = await responseTask;
 
             HomeIndexViewModel viewModel = new()
             {
                 PageTitle = "Translation",
                 FormModel = formModel,
-                //LanguagesResponse = response
+                LanguagesResponse = response
             };
 
-            if (formModel?.Action != null)
-            {
-                viewModel.FormModel = formModel;
+            string defaultLang = "en";
+            if (string.IsNullOrEmpty(formModel.LangFrom)) formModel.LangFrom = defaultLang;
 
-                if (string.IsNullOrWhiteSpace(formModel.OriginalText) && formModel.Action == "translate")
+            if (formModel.Action == "replace")
+            {
+                (formModel.LangFrom, formModel.LangTo) = (formModel.LangTo, formModel.LangFrom);
+                if (!string.IsNullOrEmpty(formModel.TranslatedText))
                 {
-                    viewModel.ErrorMessage = "Please enter any text to translate";
+                    formModel.OriginalText = formModel.TranslatedText;
+                    formModel.TranslatedText = null;
+                    formModel.Action = "translate";
                 }
             }
 
@@ -101,107 +81,112 @@ namespace AzureP33.Controllers
             {
                 if (!string.IsNullOrWhiteSpace(formModel.OriginalText) && formModel.OriginalText.Trim().Length >= 2)
                 {
-                    string query = $"from={formModel.LangFrom}&to={formModel.LangTo}";
-                    object[] body = new object[] { new { Text = formModel.OriginalText } };
-                    var requestBody = JsonSerializer.Serialize(body);
-
-                    string result = await RequestApi(query, requestBody, ApiMode.Translate);
-                    if (result[0] == '[')
+                    try
                     {
-                        viewModel.Items = JsonSerializer.Deserialize<List<TranslatorResponseItem>>(result);
-                    }
-                    else 
-                    {
-                        viewModel.ErrorResponse = JsonSerializer.Deserialize<TranslatorErrorResponse>(result);
-                    }
+                        string query = $"from={formModel.LangFrom}&to={formModel.LangTo}";
+                        object[] body = new object[] { new { Text = formModel.OriginalText } };
+                        var requestBody = System.Text.Json.JsonSerializer.Serialize(body);
 
+                        string result = await RequestApi(query, requestBody, ApiMode.Translate);
+
+                        if (result.TrimStart().StartsWith("["))
+                        {
+                            viewModel.Items = JsonSerializer.Deserialize<List<TranslatorResponseItem>>(result);
+
+                            if (response.Translatirations.TryGetValue(formModel.LangFrom, out var sourceLangData))
+                            {
+                                string fromScript = sourceLangData.Scripts![0].Code!;
+                                string toScript = sourceLangData.Scripts![0].ToScripts![0].Code!;
+                                string tQuery = $"language={formModel.LangFrom}&fromScript={fromScript}&toScript={toScript}";
+                                var tBody = System.Text.Json.JsonSerializer.Serialize(new object[] { new { Text = formModel.OriginalText } });
+
+                                string tResult = await RequestApi(tQuery, tBody, ApiMode.Transliterate);
+                                var tItems = System.Text.Json.JsonSerializer.Deserialize<List<TransliterationResponseItem>>(tResult);
+                                if (tItems?.Count > 0) viewModel.FromTransliteration = tItems[0];
+                            }
+
+                            if (viewModel.Items?.Count > 0 && response.Translatirations.TryGetValue(formModel.LangTo, out var targetLangData))
+                            {
+                                string translatedText = viewModel.Items[0].Translations[0].Text;
+                                string fromScript = targetLangData.Scripts![0].Code!;
+                                string toScript = targetLangData.Scripts![0].ToScripts![0].Code!;
+                                string tQuery = $"language={formModel.LangTo}&fromScript={fromScript}&toScript={toScript}";
+                                var tBody = System.Text.Json.JsonSerializer.Serialize(new object[] { new { Text = translatedText } });
+
+                                string tResult = await RequestApi(tQuery, tBody, ApiMode.Transliterate);
+                                var tItems = System.Text.Json.JsonSerializer.Deserialize<List<TransliterationResponseItem>>(tResult);
+                                if (tItems?.Count > 0) viewModel.ToTransliteration = tItems[0];
+                            }
+
+                            try
+                            {
+                                var historyItem = new TranslationHistory
+                                {
+                                    UserId = "Anonim",
+                                    OriginalText = formModel.OriginalText,
+                                    FromLang = formModel.LangFrom,
+                                    TranslatedText = viewModel.Items[0].Translations[0].Text,
+                                    ToLang = formModel.LangTo,
+                                    CreatedAt = DateTime.UtcNow,
+
+                                    FromTransliteration = viewModel.FromTransliteration,
+                                    ToTransliteration = viewModel.ToTransliteration,
+                                    Type = "Translation",
+                                    Category = "History"
+                                };
+
+                                Container container = await _cosmosDbService.GetContainerAsync();
+                                await container.CreateItemAsync(historyItem, new PartitionKey(historyItem.Category));
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"DB Save Error: {ex.Message}");
+                            }
+                        }
+                        else
+                        {
+                            viewModel.ErrorResponse = System.Text.Json.JsonSerializer.Deserialize<TranslatorErrorResponse>(result);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        viewModel.ErrorMessage = "Translation failed: " + ex.Message;
+                    }
                 }
-                else if (string.IsNullOrWhiteSpace(viewModel.ErrorMessage))
+                else
                 {
                     viewModel.ErrorMessage = "Text must be at least 2 characters long.";
                 }
             }
 
-            var response = await responseTask;
+            return View(viewModel);
+        }
 
-            if (response.Transltations.TryGetValue(formModel.LangFrom, out var selectedLangData))
+        public async Task<IActionResult> HistoryAsync()
+        {
+            var viewModel = new HomeIndexViewModel();
+
+            try
             {
-                viewModel.Lang = selectedLangData;
-            }
+                Container container = await _cosmosDbService.GetContainerAsync();
 
-            if (viewModel.Items != null) 
-            {
-                LangData langData;
+                var query = new QueryDefinition(
+                    "SELECT * FROM c WHERE c.Type = 'Translation' ORDER BY c.CreatedAt DESC"
+                );
 
-                try
+                using (FeedIterator<TranslationHistory> feed = container.GetItemQueryIterator<TranslationHistory>(query))
                 {
-                    if (!string.IsNullOrWhiteSpace(formModel.OriginalText) && formModel.OriginalText.Trim().Length >= 2)
+                    while (feed.HasMoreResults)
                     {
-                        langData = response.Translatirations[formModel.LangFrom];
-                        string fromScript = langData.Scripts![0].Code!;
-                        string toScript = langData.Scripts![0].ToScripts![0].Code!;
-
-                        string query = $"language={formModel.LangFrom}&fromScript={fromScript}&toScript={toScript}";
-                        var requestBody = JsonSerializer.Serialize(new object[]
-                        {
-                            new { Text = formModel.OriginalText }
-                        });
-
-                        string jsonResult = await RequestApi(query, requestBody, ApiMode.Transliterate);
-
-                        var resultItems = JsonSerializer.Deserialize<List<TransliterationResponseItem>>(jsonResult);
-
-                        if (resultItems != null && resultItems.Count > 0)
-                        {
-                            viewModel.FromTransliteration = resultItems[0];
-                        }
+                        viewModel.History.AddRange(await feed.ReadNextAsync());
                     }
-                    else if (string.IsNullOrWhiteSpace(viewModel.ErrorMessage))
-                    {
-                        viewModel.ErrorMessage = "Text must be at least 2 characters long.";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    viewModel.ErrorMessage = "Transliteration failed.";
-                }
-
-                try
-                {
-                    if (viewModel.Items?.Count > 0 && viewModel.Items[0].Translations?.Count > 0)
-                    {
-                        string translatedText = viewModel.Items[0].Translations[0].Text;
-
-                        if (response.Translatirations.TryGetValue(formModel.LangTo, out var targetLangData))
-                        {
-                            string fromScript = targetLangData.Scripts![0].Code!;
-                            string toScript = targetLangData.Scripts![0].ToScripts![0].Code!;
-
-                            string query = $"language={formModel.LangTo}&fromScript={fromScript}&toScript={toScript}";
-
-                            var requestBody = JsonSerializer.Serialize(new object[]
-                            {
-                                new { Text = translatedText }
-                            });
-
-                            string jsonResult = await RequestApi(query, requestBody, ApiMode.Transliterate);
-
-                            var resultItems = JsonSerializer.Deserialize<List<TransliterationResponseItem>>(jsonResult);
-
-                            if (resultItems != null && resultItems.Count > 0)
-                            {
-                                viewModel.ToTransliteration = resultItems[0];
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    viewModel.ErrorMessage = "Target transliteration failed: " + ex.Message;
                 }
             }
+            catch (Exception ex)
+            {
+                viewModel.ErrorMessage = "Error history load: " + ex.Message;
+            }
 
-            viewModel.LanguagesResponse = await responseTask;
             return View(viewModel);
         }
 
@@ -263,7 +248,6 @@ namespace AzureP33.Controllers
             try
             {
                 var responseLang = await GetLanguagesAsync();
-
                 if (responseLang == null || formModel.Action != "fetch" || string.IsNullOrEmpty(formModel.OriginalText))
                 {
                     Response.StatusCode = StatusCodes.Status400BadRequest;
@@ -273,8 +257,34 @@ namespace AzureP33.Controllers
                 string translatedText = await RequestTranslationAsync(formModel);
                 string originalText = formModel.OriginalText.Trim();
 
-                string separator = originalText.Length > 300 ? "\n" : " - ";
+                try
+                {
+                    var historyItem = new TranslationHistory
+                    {
+                        UserId = "Anonim",
+                        OriginalText = originalText,
+                        FromLang = formModel.LangFrom,
+                        TranslatedText = translatedText,
+                        ToLang = formModel.LangTo,
+                        CreatedAt = DateTime.UtcNow,
 
+                        FromTransliteration = null,
+                        ToTransliteration = null,
+
+                        Type = "Translation",
+                        Category = "History"
+                    };
+
+                    Container container = await _cosmosDbService.GetContainerAsync();
+
+                    await container.CreateItemAsync(historyItem, new PartitionKey(historyItem.Category));
+                }
+                catch (Exception dbEx)
+                {
+                    Console.WriteLine($"DB Save Error (Selection): {dbEx.Message}");
+                }
+
+                string separator = originalText.Length > 300 ? "\n" : " - ";
                 string result = $"{originalText}{separator}{translatedText}";
 
                 return Json(result);
@@ -284,42 +294,6 @@ namespace AzureP33.Controllers
                 Response.StatusCode = StatusCodes.Status500InternalServerError;
                 return Json(serviceUnavailableMessage);
             }
-        }
-
-        public async Task<IActionResult> CosmosAddAsync([FromForm] HomeCosmosAddFormModel? formModelCosmos, [FromForm] HomeIndexFormModel formModel) 
-        {
-            if (formModelCosmos?.Action == "Create") 
-            {
-                if (String.IsNullOrEmpty(formModelCosmos.Name) || String.IsNullOrEmpty(formModelCosmos.Email))
-                {
-                    ViewData["result"] = "Fill all inputs.";
-                }
-                else 
-                {
-                    Container container = await _cosmosDbService.GetContainerAsync();
-                    Models.Cosmos.TranslationHistory history = new()
-                    {
-                        Id = Guid.NewGuid(),
-                        userId = "Anonim",
-                        OriginalText = formModel.OriginalText,
-                        TranslatedText = formModel.TranslatedText,
-                        FromLang = formModel.LangFrom,
-                        ToLang = formModel.LangTo,
-                        CreatedAt = DateTime.Now,
-                        FromTransliteration = formModel.FromTransliteration,
-                        ToTransliteration = formModel.ToTransliteration,
-                        FromTranResult = formModel.FromTransliteration?.Text,
-                        ToTranResult = formModel.ToTransliteration?.Text
-                    };
-                    ItemResponse<Models.Cosmos.TranslationHistory> response = await container.UpsertItemAsync<Models.Cosmos.TranslationHistory>
-                    (
-                        item: history,
-                        partitionKey: new PartitionKey(Models.Cosmos.TranslationHistory.PartitionKey)
-                    );
-                    ViewData["result"] = $"History: {response.Resource}, Status code: {response.StatusCode}, Request charge: {response.RequestCharge:0.00}";
-                }
-            }
-            return View();
         }
 
         public async Task<IActionResult> CosmosAsync(string? categoryId)

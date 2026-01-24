@@ -5,27 +5,25 @@ namespace AzureP33.Models.Cosmos
 {
     public class TranslationHistory
     {
-        public static readonly string PartitionKey = "History";
-
         [JsonProperty("id")]
-        public Guid Id { get; set; }
-        public string? userId { get; set; }
+        public string id { get; set; } = Guid.NewGuid().ToString();
 
-        public string OriginalText { get; set; }
-        public string TranslatedText { get; set; }
-        public string FromLang { get; set; }
-        public string ToLang { get; set; }
+        public string? UserId { get; set; }
+
+        public string OriginalText { get; set; } = null!;
+        public string TranslatedText { get; set; } = null!;
+
+        public string FromLang { get; set; } = null!;
+        public string ToLang { get; set; } = null!;
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        [JsonProperty("category")]
-        public string Category { get; set; } = TranslationHistory.PartitionKey;
 
         public TransliterationResponseItem? FromTransliteration { get; set; }
         public TransliterationResponseItem? ToTransliteration { get; set; }
 
-        public string? FromTranResult = null!;
-        public string? ToTranResult = null!;
-
         public string Type { get; set; } = "Translation";
+
+        [JsonProperty("category")]
+        public string Category { get; set; } = "History";
     }
 }
